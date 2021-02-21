@@ -1,0 +1,10 @@
+anytool_test:
+  output:
+    dev:
+      type: postgres
+      host: localhost
+      user: anytool_test_user
+      pass: magical_password
+      port: 5432
+      dbname: anytool_test_db
+      schema: public
