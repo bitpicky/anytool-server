@@ -38,5 +38,4 @@ class PostgresConnector:
         column_header = [column.name for column in table.columns]
         table_contents = connection.execute(select_statement).fetchall()
         payload = {"column_header": column_header, "table_content": table_contents}
-        print(type(payload["table_content"][0]))
         return payload
