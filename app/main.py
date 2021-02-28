@@ -1,5 +1,5 @@
 """API Entry Point"""
-from typing import List
+from typing import Any, List
 
 from fastapi import FastAPI
 from postgres_connector import PostgresConnector
@@ -32,6 +32,20 @@ class ListOfTables(BaseModel):
     tables: List[str]
 
 
+class TableContent(BaseModel):
+    """Pydandict model for table content endpoint response validation."""
+
+    column_header: List[str]
+    table_content: List[Any]
+
+
+class TableContentRequest(BaseModel):
+    """Pydantic model for a table content request."""
+
+    target_schema: str
+    target_table: str
+
+
 @app.get("/")
 async def root():
     """Basic Hello World."""
@@ -60,7 +74,7 @@ def return_tables_in_schema(
     connector = PostgresConnector(
         {
             "host": "localhost",
-            "user": "anytool_user",
+            "username": "anytool_user",
             "password": "magical_password",
             "database": "anytool_test_db",
             "port": "5432",
@@ -68,3 +82,21 @@ def return_tables_in_schema(
     )
     tables = connector.get_tables_in_db_schema(target_schema=request.dict()["schema_name"])
     return ListOfTables(**{"tables": tables})
+
+
+@app.post("/table_content", response_model=TableContent, name="Table Content")
+def return_table_content(request: TableContentRequest) -> TableContent:
+    """Dummy"""
+    connector = PostgresConnector(
+        {
+            "host": "localhost",
+            "username": "anytool_user",
+            "password": "magical_password",
+            "database": "anytool_test_db",
+            "port": "5432",
+        }
+    )
+    table_content_payload = connector.show_table_contents(
+        target_schema=request.dict()["target_schema"], target_table=request.dict()["target_table"]
+    )
+    return table_content_payload
