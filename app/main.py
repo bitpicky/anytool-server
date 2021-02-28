@@ -11,7 +11,7 @@ app = FastAPI()
 class SchemaRequest(BaseModel):
     """Pydantic model to validate request."""
 
-    schema_name: str
+    schema_name: str = "public"
 
 
 class GreetingModel(BaseModel):
