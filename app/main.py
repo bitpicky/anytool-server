@@ -42,8 +42,8 @@ class TableContent(BaseModel):
 class TableContentRequest(BaseModel):
     """Pydantic model for a table content request."""
 
-    target_schema: str
-    target_table: str
+    target_schema: str = "public"
+    target_table: str = "nlp_classification_output"
 
 
 @app.get("/")
