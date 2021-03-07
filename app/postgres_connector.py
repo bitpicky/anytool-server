@@ -56,11 +56,6 @@ class PostgresConnector:
         Session = sessionmaker(bind=self.engine)
         session = Session()
 
-        # payload = [
-        #     {"filter": {"id": 1}, "content": {"reviewed_answer": "new_content"}},
-        #     {"filter": {"id": 2}, "content": {"reviewed_answer": "new_content_2"}},
-        # ]
-
         for record in payload:
             stmt = (
                 table.update()

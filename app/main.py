@@ -1,10 +1,19 @@
 """API Entry Point"""
 from typing import Any, Dict, List, Sequence
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from postgres_connector import PostgresConnector
 from pydantic import BaseModel
+
+
+class TableKeyError(Exception):
+    """Thrown when a key error is emited by the table updater."""
+
+    def __init__(self, message: Exception):
+        self.message = message
+
 
 app = FastAPI()
 
@@ -54,6 +63,18 @@ class TableContentRequest(BaseModel):
 
     target_schema: str = "public"
     target_table: str = "nlp_classification_output"
+
+
+@app.exception_handler(TableKeyError)
+async def table_key_exception_handler(request: Request, exc: TableKeyError):
+    """Raises a custom TableKeyError."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "message": "Oops! One of the update keys isn't found in the table. "
+            f"Internal Error: {exc.message!r}"
+        },
+    )
 
 
 @app.get("/")
@@ -140,8 +161,11 @@ def update_table_content(request: UpdateTableRequest):
             "port": "5432",
         }
     )
-    connector.update_table(
-        target_schema=request.dict()["target_schema"],
-        target_table=request.dict()["target_table"],
-        payload=request.dict()["payload"],
-    )
+    try:
+        connector.update_table(
+            target_schema=request.dict()["target_schema"],
+            target_table=request.dict()["target_table"],
+            payload=request.dict()["payload"],
+        )
+    except KeyError as e:
+        raise TableKeyError(message=e)
