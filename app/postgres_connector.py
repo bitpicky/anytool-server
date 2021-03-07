@@ -1,9 +1,10 @@
 """Holds Postgres DB Connector."""
 
-from typing import Dict
+from typing import Any, Dict, Mapping, Sequence, Tuple, Union
 
-from sqlalchemy import MetaData, Table, create_engine, inspect, select
+from sqlalchemy import MetaData, Table, and_, create_engine, inspect, select
 from sqlalchemy.engine import url
+from sqlalchemy.orm import sessionmaker
 
 
 class PostgresConnector:
@@ -20,12 +21,14 @@ class PostgresConnector:
         )
         self.engine = create_engine(self.connection_url)
 
-    def get_tables_in_db_schema(self, target_schema: str):
+    def get_tables_in_db_schema(self, target_schema: str) -> None:
         inspector = inspect(self.engine)
         tables = inspector.get_table_names(schema=target_schema)
         return tables
 
-    def show_table_contents(self, target_schema: str, target_table: str):
+    def show_table_contents(
+        self, target_schema: str, target_table: str
+    ) -> Dict[str, Sequence[Union[str, Tuple[Any]]]]:
         metadata = MetaData(bind=None, schema=target_schema)
         table = Table(
             target_table,
@@ -39,3 +42,30 @@ class PostgresConnector:
         table_contents = connection.execute(select_statement).fetchall()
         payload = {"column_header": column_header, "table_content": table_contents}
         return payload
+
+    def update_table(
+        self,
+        target_schema: str,
+        target_table: str,
+        payload: Sequence[Mapping[str, Mapping[str, Any]]],
+    ) -> None:
+        metadata = MetaData(bind=None, schema=target_schema)
+        metadata.reflect(bind=self.engine, only=["nlp_classification_output"])
+        table = Table(target_table, metadata, autoload=True, autoload_with=self.engine)
+
+        Session = sessionmaker(bind=self.engine)
+        session = Session()
+
+        # payload = [
+        #     {"filter": {"id": 1}, "content": {"reviewed_answer": "new_content"}},
+        #     {"filter": {"id": 2}, "content": {"reviewed_answer": "new_content_2"}},
+        # ]
+
+        for record in payload:
+            stmt = (
+                table.update()
+                .where(and_(*[table.c[key] == value for key, value in record["filter"].items()]))
+                .values(record["content"])
+            )
+            session.execute(stmt)
+        session.commit()

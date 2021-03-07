@@ -54,4 +54,32 @@ def test_get_tables_in_db_schema():
     }
     c = PostgresConnector(connection_params=connection_details)
     results = c.get_tables_in_db_schema("public")
-    assert results == ["test_table", "nlp_classification_output"]
+    assert results == [
+        "test_table",
+        "nlp_classification_output",
+        "nlp_classification_output_update",
+    ]
+
+
+def test_update_table():
+    from app.postgres_connector import PostgresConnector
+
+    connection_details = {
+        "host": "localhost",
+        "username": "anytool_user",
+        "password": "magical_password",
+        "database": "anytool_test_db",
+        "port": "5432",
+    }
+
+    request = {
+        "target_schema": "public",
+        "target_table": "nlp_classification_output_update",
+        "payload": [
+            {"filter": {"id": 3}, "content": {"reviewed_answer": "new_content"}},
+            {"filter": {"id": 4}, "content": {"reviewed_answer": "new_content_2"}},
+        ],
+    }
+    c = PostgresConnector(connection_params=connection_details)
+    rez = c.update_table(request["target_schema"], request["target_table"], request["payload"])
+    assert rez is None

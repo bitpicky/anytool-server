@@ -2,6 +2,7 @@ version: "2"
 services:
   anytool_db:
     image: postgres
+    command: ["postgres", "-c", "log_statement=all"]
     environment:
       POSTGRES_USER: "anytool_user"
       POSTGRES_PASSWORD: "magical_password"

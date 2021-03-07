@@ -1,5 +1,5 @@
 """API Entry Point"""
-from typing import Any, List
+from typing import Any, Dict, List, Sequence
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -107,6 +107,41 @@ def return_table_content(request: TableContentRequest) -> TableContent:
         }
     )
     table_content_payload = connector.show_table_contents(
-        target_schema=request.dict()["target_schema"], target_table=request.dict()["target_table"]
+        target_schema=request.dict()["target_schema"],
+        target_table=request.dict()["target_table"],
     )
     return table_content_payload
+
+
+class UpdateTablePayload(BaseModel):
+    """Validation Schema for the payload part of an update request."""
+
+    filter: Dict[str, Any] = {"id": 3}
+    content: Dict[str, Any] = {"reviewed_answer": "yummy"}
+
+
+class UpdateTableRequest(BaseModel):
+    """Validation schema for the update table request."""
+
+    target_schema: str = "public"
+    target_table: str = "nlp_classification_output"
+    payload: Sequence[UpdateTablePayload]
+
+
+@app.put("/update_table", name="Update Table Content")
+def update_table_content(request: UpdateTableRequest):
+    """Updates a table with new content."""
+    connector = PostgresConnector(
+        {
+            "host": "localhost",
+            "username": "anytool_user",
+            "password": "magical_password",
+            "database": "anytool_test_db",
+            "port": "5432",
+        }
+    )
+    connector.update_table(
+        target_schema=request.dict()["target_schema"],
+        target_table=request.dict()["target_table"],
+        payload=request.dict()["payload"],
+    )
