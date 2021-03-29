@@ -1,6 +1,6 @@
 """Holds Postgres DB Connector."""
 
-from typing import Any, Dict, Mapping, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
 from sqlalchemy import MetaData, Table, and_, create_engine, inspect, select
 from sqlalchemy.engine import url
@@ -21,10 +21,15 @@ class PostgresConnector:
         )
         self.engine = create_engine(self.connection_url)
 
-    def get_tables_in_db_schema(self, target_schema: str) -> None:
+    def get_tables_in_db_schema(self, target_schema: str):
         inspector = inspect(self.engine)
         tables = inspector.get_table_names(schema=target_schema)
         return tables
+
+    def get_schemas_in_db(self) -> List[str]:
+        inspector = inspect(self.engine)
+        schemas = inspector.get_schema_names()
+        return schemas
 
     def show_table_contents(
         self, target_schema: str, target_table: str
