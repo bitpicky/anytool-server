@@ -1,11 +1,19 @@
 """API Entry Point"""
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
+import sqlalchemy
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from postgres_connector import PostgresConnector
 from pydantic import BaseModel
+
+DUMMY_CONNECTOR_CREDS = {
+    "host": "localhost",
+    "username": "anytool_user",
+    "password": "magical_password",
+    "port": "5432",
+}
 
 
 class TableKeyError(Exception):
@@ -169,3 +177,46 @@ def update_table_content(request: UpdateTableRequest):
         )
     except KeyError as e:
         raise TableKeyError(message=e)
+
+
+class SchemaListRequest(BaseModel):
+    """Schema list endpoint request model"""
+
+    database: Optional[str] = "anytool_test_db"
+
+
+class ListOfSchemas(BaseModel):
+    """Pydandic list of  tables validation model."""
+
+    schemas: List[str]
+
+
+class DbMissingError(Exception):
+    """Thrown when a key error is emited by the table updater."""
+
+    def __init__(self, message: Exception):
+        self.message = message
+
+
+@app.exception_handler(DbMissingError)
+async def db_missing_error_exception_handler(request: Request, exc: DbMissingError):
+    """Raises a custom TableKeyError."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "message": "Oops! We got an OperationalError. This usually means the targetted db doesn't exist"
+            f" Internal Error: {exc.message!r}"
+        },
+    )
+
+
+@app.post("/schemas", response_model=ListOfSchemas)
+def return_schemas_in_db(request: SchemaListRequest):
+    """Returns the full list of schemas in a database."""
+    DUMMY_CONNECTOR_CREDS.update({"database": request.dict()["database"]})
+    try:
+        connector = PostgresConnector(DUMMY_CONNECTOR_CREDS)
+        schemas = connector.get_schemas_in_db()
+    except sqlalchemy.exc.OperationalError as e:
+        raise DbMissingError(message=e)
+    return ListOfSchemas(**{"schemas": schemas})
