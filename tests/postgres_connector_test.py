@@ -83,3 +83,18 @@ def test_update_table():
     c = PostgresConnector(connection_params=connection_details)
     rez = c.update_table(request["target_schema"], request["target_table"], request["payload"])
     assert rez is None
+
+
+def test_get_schemas_in_db():
+    from app.postgres_connector import PostgresConnector
+
+    connection_details = {
+        "host": "localhost",
+        "username": "anytool_user",
+        "password": "magical_password",
+        "database": "anytool_test_db",
+        "port": "5432",
+    }
+    c = PostgresConnector(connection_params=connection_details)
+    rez = c.get_schemas_in_db()
+    assert rez == ["information_schema", "public"]
