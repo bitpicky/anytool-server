@@ -1,5 +1,13 @@
 import pytest
 
+CONNECTION_PARAMS = {
+    "host": "localhost",
+    "username": "anytool_user",
+    "password": "magical_password",
+    "database": "anytool_test_db",
+    "port": "5432",
+}
+
 
 @pytest.mark.parametrize(
     "target_schema, target_table, expectation",
@@ -98,3 +106,91 @@ def test_get_schemas_in_db():
     c = PostgresConnector(connection_params=connection_details)
     rez = c.get_schemas_in_db()
     assert rez == ["information_schema", "public"]
+
+
+@pytest.mark.parametrize(
+    "sql_input, expectation",
+    [
+        pytest.param(
+            "select * from public.nlp_classification_output",
+            {
+                "column_header": [
+                    "id",
+                    "item_description",
+                    "predicted_item_label",
+                    "reviewed_answer",
+                ],
+                "table_content": [
+                    (1, "pizza", "food", None),
+                    (2, "prosciutto di parma", "food", None),
+                    (3, "prosecco", "alcohol", None),
+                    (4, "Lamborghini", "unknown", None),
+                    (5, "Ferrari", "unknown", None),
+                ],
+            },
+            id="legit lower case",
+        ),
+        pytest.param(
+            "SELECT * from public.nlp_classification_output",
+            {
+                "column_header": [
+                    "id",
+                    "item_description",
+                    "predicted_item_label",
+                    "reviewed_answer",
+                ],
+                "table_content": [
+                    (1, "pizza", "food", None),
+                    (2, "prosciutto di parma", "food", None),
+                    (3, "prosecco", "alcohol", None),
+                    (4, "Lamborghini", "unknown", None),
+                    (5, "Ferrari", "unknown", None),
+                ],
+            },
+            id="legit upper case",
+        ),
+        pytest.param(
+            "select * from public.nlp_classification_output; drop table public.nlp_classification_output",
+            {
+                "column_header": [
+                    "id",
+                    "item_description",
+                    "predicted_item_label",
+                    "reviewed_answer",
+                ],
+                "table_content": [
+                    (1, "pizza", "food", None),
+                    (2, "prosciutto di parma", "food", None),
+                    (3, "prosecco", "alcohol", None),
+                    (4, "Lamborghini", "unknown", None),
+                    (5, "Ferrari", "unknown", None),
+                ],
+            },
+            id="illegal but escapted",
+        ),
+    ],
+)
+def test_return_result_from_raw_sql(sql_input, expectation):
+    from app.postgres_connector import PostgresConnector
+
+    c = PostgresConnector(connection_params=CONNECTION_PARAMS)
+    payload = c.return_result_from_raw_sql(sql_input)
+    assert payload["column_header"] == expectation["column_header"]
+    assert payload["table_content"] == expectation["table_content"]
+
+
+@pytest.mark.parametrize(
+    "sql_input",
+    [
+        pytest.param(
+            "drop table public.nlp_classification_output",
+            id="legit lower case",
+        )
+    ],
+)
+def test_return_result_from_raw_sql_illegal(sql_input):
+    from app.postgres_connector import PostgresConnector
+
+    c = PostgresConnector(connection_params=CONNECTION_PARAMS)
+    with pytest.raises(NotImplementedError):
+        payload = c.return_result_from_raw_sql(sql_input)

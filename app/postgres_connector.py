@@ -2,8 +2,7 @@
 
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
-from sqlalchemy import MetaData, Table, and_, create_engine, inspect, select
-from sqlalchemy.engine import url
+from sqlalchemy import MetaData, Table, and_, create_engine, engine, inspect, select, text
 from sqlalchemy.orm import sessionmaker
 
 
@@ -11,7 +10,7 @@ class PostgresConnector:
     """Postgres DB Connector/Adaptor."""
 
     def __init__(self, connection_params: Dict[str, str]) -> None:
-        self.connection_url = url.URL(
+        self.connection_url = engine.URL.create(
             drivername="postgresql+psycopg2",
             host=connection_params.get("host", str()),
             username=connection_params.get("username", str()),
@@ -69,3 +68,21 @@ class PostgresConnector:
             )
             session.execute(stmt)
         session.commit()
+
+    def return_result_from_raw_sql(
+        self, sql_string: str
+    ) -> Dict[str, Sequence[Union[str, Tuple[Any]]]]:
+        # do some hacky injection protection
+        _sql_string = sql_string.lower().strip().split(";")[0]
+        if not _sql_string.startswith("select"):
+            raise NotImplementedError("User provided statement that can only ve a SELECT statement")
+
+        _sql_string = text(_sql_string)
+
+        connection = self.engine.connect()
+
+        results = connection.execute(_sql_string)
+        column_header = list(results.keys())
+        table_content = results.all()
+        payload = {"column_header": column_header, "table_content": table_content}
+        return payload
