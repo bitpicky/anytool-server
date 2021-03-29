@@ -12,6 +12,7 @@ DUMMY_CONNECTOR_CREDS = {
     "host": "localhost",
     "username": "anytool_user",
     "password": "magical_password",
+    "database": "anytool_test_db",
     "port": "5432",
 }
 
@@ -192,7 +193,7 @@ class ListOfSchemas(BaseModel):
 
 
 class DbMissingError(Exception):
-    """Thrown when a key error is emited by the table updater."""
+    """Thrown when the required database does not exist."""
 
     def __init__(self, message: Exception):
         self.message = message
@@ -220,3 +221,59 @@ def return_schemas_in_db(request: SchemaListRequest):
     except sqlalchemy.exc.OperationalError as e:
         raise DbMissingError(message=e)
     return ListOfSchemas(**{"schemas": schemas})
+
+
+class SqlRequest(BaseModel):
+    """Model of a sql select table request."""
+
+    sql_string: str
+
+
+class NotImplementedQueryType(Exception):
+    """Thrown when a non-select statement is submitted by a user."""
+
+    def __init__(self, message: Exception):
+        self.message = message
+
+
+@app.exception_handler(NotImplementedQueryType)
+async def not_implemented_querry_error_handler(request: Request, exc: NotImplementedQueryType):
+    """Raises a custom TableKeyError."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "message": "User did not provide a select statement" f" Internal Error: {exc.message!r}"
+        },
+    )
+
+
+class UnhandledException(Exception):
+    """Thrown when we don't know what else to throw."""
+
+    def __init__(self, message: Exception):
+        self.message = message
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception(request: Request, exc: UnhandledException):
+    """Raises a custom TableKeyError."""
+    return JSONResponse(
+        status_code=400,
+        content={"message": "Something bad happened" f" Internal Error: {exc.message!r}"},
+    )
+
+
+@app.post("/select", response_model=TableContent)
+def return_table_content_from_sql(request: SqlRequest):
+    """Returns table content from a sql statement.
+
+    It must be a select otherwise we error.
+    """
+    try:
+        connector = PostgresConnector(DUMMY_CONNECTOR_CREDS)
+        table_content_output = connector.return_result_from_raw_sql(request.dict()["sql_string"])
+    except NotImplementedError as e:
+        raise NotImplementedQueryType(message=e)
+    except Exception as e:
+        raise UnhandledException(message=e)
+    return TableContent(**table_content_output)
