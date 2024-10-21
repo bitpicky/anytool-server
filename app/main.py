@@ -1,4 +1,5 @@
 """API Entry Point"""
+
 from typing import Any, Dict, List, Optional, Sequence
 
 import sqlalchemy
